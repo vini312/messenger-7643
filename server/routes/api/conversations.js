@@ -19,9 +19,9 @@ router.get("/", async (req, res, next) => {
         },
       },
       attributes: ["id"],
-      order: [[Message, "createdAt", "DESC"]],
+      order: [[Message, "createdAt", "ASC"]],
       include: [
-        { model: Message, order: ["createdAt", "DESC"] },
+        { model: Message },
         {
           model: User,
           as: "user1",
@@ -47,8 +47,29 @@ router.get("/", async (req, res, next) => {
       ],
     });
 
-    for (let i = 0; i < conversations.length; i++) {
-      const convo = conversations[i];
+    // Reorder the conversations according to the last message sent/received
+    const convoSorted = conversations.sort((a,b) => {
+        const convoA = a?.messages?.length > 0 ? a?.messages[a.messages.length - 1]?.createdAt : undefined;
+        const convoB = b?.messages?.length > 0 ? b?.messages[b.messages.length - 1]?.createdAt : undefined;
+
+        // condition for the last element
+        if (convoA !== undefined && convoB === undefined)
+            return -1;
+
+        // condition for the first element
+        if (convoA === undefined && convoB !== undefined)
+            return 1;
+
+        // condition for comparing two elements
+        if (convoA !== undefined && convoB !== undefined && convoA !== convoB)
+            return convoA < convoB ? 1 : -1;
+
+        // return 0 if the elements are equal
+        return 0;
+    })
+
+    for (let i = 0; i < convoSorted.length; i++) {
+      const convo = convoSorted[i];
       const convoJSON = convo.toJSON();
 
       // set a property "otherUser" so that frontend will have easier access
@@ -68,11 +89,11 @@ router.get("/", async (req, res, next) => {
       }
 
       // set properties for notification count and latest message preview
-      convoJSON.latestMessageText = convoJSON.messages[0].text;
-      conversations[i] = convoJSON;
+      convoJSON.latestMessageText = convoJSON.messages[convoJSON.messages.length - 1].text;
+        convoSorted[i] = convoJSON;
     }
 
-    res.json(conversations);
+    res.json(convoSorted);
   } catch (error) {
     next(error);
   }
