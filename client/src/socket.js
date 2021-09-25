@@ -1,10 +1,10 @@
 import io from "socket.io-client";
 import store from "./store";
 import {
-  setNewMessage,
   removeOfflineUser,
-  addOnlineUser,
+  addOnlineUser, setLastViewTime,
 } from "./store/conversations";
+import { messageReceived } from "./store/utils/thunkCreators";
 
 const socket = io(window.location.origin);
 
@@ -18,8 +18,14 @@ socket.on("connect", () => {
   socket.on("remove-offline-user", (id) => {
     store.dispatch(removeOfflineUser(id));
   });
+
   socket.on("new-message", (data) => {
-    store.dispatch(setNewMessage(data.message, data.sender));
+    // Condition to update only the last viewed message
+    if (data.recipientId.otherUserLastMessageId !== undefined)
+      store.dispatch(setLastViewTime(data.message.conversationId, {otherUserLastMessageId: data.recipientId.otherUserLastMessageId}));
+    // Condition to update all values
+    else
+      store.dispatch(messageReceived(data));
   });
 });
 

@@ -5,8 +5,11 @@ import {
   addConversation,
   setNewMessage,
   setSearchedUsers,
+  setLastViewTime,
 } from "../conversations";
 import { gotUser, setFetchingStatus } from "../user";
+import { setActiveChat } from "../activeConversation";
+import store from "../index";
 
 axios.interceptors.request.use(async function (config) {
   const token = await localStorage.getItem("messenger-token");
@@ -91,6 +94,11 @@ const sendMessage = (data, body) => {
   });
 };
 
+const updateLastViewTime = async (body) => {
+  const { data } = await axios.put("/api/conversations/lastViewTime", body);
+  return data;
+}
+
 // message format to send: {recipientId, text, conversationId}
 // conversationId will be set to null if its a brand new conversation
 export const postMessage = (body) => async (dispatch) => {
@@ -101,9 +109,37 @@ export const postMessage = (body) => async (dispatch) => {
       dispatch(addConversation(body.recipientId, data.message));
     } else {
       dispatch(setNewMessage(data.message));
+      dispatch(setLastViewTime(body.conversationId, { lastViewTime: data.message.createdAt }));
     }
 
     sendMessage(data, body);
+  } catch (error) {
+    console.error(error);
+  }
+};
+
+export const messageReceived = (data) => async (dispatch, getState) => {
+  try {
+    const activeConversationUser = getState().activeConversation;
+
+    store.dispatch(setNewMessage(data.message, data.sender));
+
+    // Check if the conversation is already active to edit lastView accordingly
+    if (data.message.senderId === activeConversationUser.id) {
+      const { lastViewTime } = await updateLastViewTime({conversationId: data.message.conversationId});
+
+      dispatch(setLastViewTime(
+          data.message.conversationId,
+          { lastViewTime: lastViewTime[0].updatedAt, otherUserLastMessageId: data.message.id }));
+
+      // Broadcast to other user the new last viewed message id
+      sendMessage(data,
+          {recipientId: {recipientId: data.recipientId, otherUserLastMessageId: data.message.id} });
+    }
+    else
+      // Update lastView with other user information
+      dispatch(setLastViewTime(data.message.conversationId, { otherUserLastMessageId: data.message.id, count: true }));
+
   } catch (error) {
     console.error(error);
   }
@@ -117,3 +153,20 @@ export const searchUsers = (searchTerm) => async (dispatch) => {
     console.error(error);
   }
 };
+
+export const activateChat = (conversation) => async (dispatch) => {
+  if (conversation.id) {
+    const { lastViewTime } = await updateLastViewTime({conversationId: conversation.id});
+
+    dispatch(setLastViewTime(conversation.id, { lastViewTime: lastViewTime[0].updatedAt }));
+
+    // Broadcast to other user the new last viewed message id
+    sendMessage(
+        { message: { conversationId:conversation.id }},
+        { recipientId: {
+            id: conversation.otherUser.id,
+            otherUserLastMessageId: conversation.messages[conversation.messages.length - 1].id
+          }});
+  }
+  dispatch(setActiveChat(conversation.otherUser.username, conversation.otherUser.id));
+}

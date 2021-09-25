@@ -6,8 +6,13 @@ export const addMessageToStore = (state, payload) => {
       id: message.conversationId,
       otherUser: sender,
       messages: [message],
+      lastView: {
+        time: message.createdAt,
+        count: 0
+      },
+      latestMessageText: message.text
     };
-    newConvo.latestMessageText = message.text;
+
     return [newConvo, ...state];
   }
 
@@ -78,6 +83,11 @@ export const addNewConvoToStore = (state, recipientId, message) => {
         ...convo,
         id: message.conversationId,
         latestMessageText: message.text,
+        lastView: {
+          ...convo.lastView,
+          time: message.createdAt,
+          count: 0
+        },
         messages: [
           ...convo.messages,
           message
@@ -88,3 +98,48 @@ export const addNewConvoToStore = (state, recipientId, message) => {
     }
   });
 };
+
+export const addLastViewTime = (state, data) => {
+
+  return state.map((convo) => {
+    if (convo.id === data.conversationId) {
+      let lastView = {};
+      // Condition when recipient conversation is open, so time will be updated and other user last message is known
+      if (data.otherUserLastMessageId !== null && data.lastViewTime !== null) {
+          lastView = {
+            time: data.lastViewTime,
+            otherUserLastMessageId: data.otherUserLastMessageId,
+            count: 0
+          }
+      }
+      // Condition when recipient conversation is NOT open, so add to count and other user last message is known
+      else if (data.otherUserLastMessageId !== null && data.count !== null) {
+          lastView = {
+            ...convo.lastView,
+            otherUserLastMessageId: data.otherUserLastMessageId,
+            count: convo.lastView.count + 1
+          }
+      }
+      // Condition when recipient conversation is NOT open, so time won't be updated but other user last message is known
+      else if (data.otherUserLastMessageId !== null) {
+          lastView = {
+            ...convo.lastView,
+            otherUserLastMessageId: data.otherUserLastMessageId
+          }
+      }
+      // Condition when user is sender, so other user last message won't be updated
+      else {
+          lastView = {
+            ...convo.lastView,
+            time: data.lastViewTime,
+            count: 0
+          }
+      }
+
+      return {...convo, lastView}
+    } else {
+      return convo;
+    }
+  });
+}
+
