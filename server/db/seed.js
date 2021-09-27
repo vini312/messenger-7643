@@ -2,7 +2,6 @@ const db = require("./db");
 const { User } = require("./models");
 const Conversation = require("./models/conversation");
 const Message = require("./models/message");
-const LastViewTime = require("./models/last_view_time");
 
 async function seed() {
   await db.sync({ force: true });
@@ -33,11 +32,13 @@ async function seed() {
     conversationId: santaigoConvo.id,
     senderId: santiago.id,
     text: "Where are you from?",
+    read: true
   });
   await Message.create({
     conversationId: santaigoConvo.id,
     senderId: thomas.id,
     text: "I'm from New York",
+    read: true
   });
   await Message.create({
     conversationId: santaigoConvo.id,
@@ -113,20 +114,6 @@ async function seed() {
           "https://res.cloudinary.com/dmlvthmqr/image/upload/v1607914466/messenger/9e2972c07afac45a8b03f5be3d0a796abe2e566e_ttq23y.png",
     }),
   ]);
-
-  const conversations = await Conversation.findAll({});
-  for (const conversation of conversations) {
-    const convo = conversation.toJSON();
-
-    await LastViewTime.create({
-      conversationId: convo.id,
-      userId: convo.user1Id
-    })
-    await LastViewTime.create({
-      conversationId: convo.id,
-      userId: convo.user2Id
-    })
-  }
 
   console.log(`seeded users and messages`);
 }

@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Typography } from "@material-ui/core";
+import { Box, Chip, Typography } from "@material-ui/core";
 import { makeStyles } from "@material-ui/core/styles";
 
 const useStyles = makeStyles((theme) => ({
@@ -13,31 +13,26 @@ const useStyles = makeStyles((theme) => ({
     fontWeight: "bold",
     letterSpacing: -0.2,
   },
-  previewText: {
-    fontSize: 12,
-    color: "#9CADC8",
-    letterSpacing: -0.17,
-  },
+  previewText: (props) => (
+    props.unreadTextCount > 0 ?
+      {fontWeight: "bold"} :
+      {
+        fontSize: 12,
+        color: "#9CADC8",
+        letterSpacing: -0.17,
+      }
+  ),
   previewTextUnread: {
-    fontSize: 13,
-    color: "#000",
-    fontWeight: 1000,
-    letterSpacing: 0.1,
+    fontWeight: "bold"
   },
   unreadTextCount: {
-    width: "20%",
-    textAlign: "center",
-    fontWeight: 600,
-    color: "white",
-    backgroundColor: "#3A8DFF",
-    borderRadius: 20,
-    padding: 5,
-    margin: 5
+    fontWeight: "bold",
+    margin: theme.spacing()
   },
 }));
 
 const ChatContent = (props) => {
-  const classes = useStyles();
+  const classes = useStyles(props);
 
   const { conversation, unreadTextCount } = props;
   const { latestMessageText, otherUser } = conversation;
@@ -48,14 +43,11 @@ const ChatContent = (props) => {
           <Typography className={classes.username}>
             {otherUser.username}
           </Typography>
-          <Typography className={unreadTextCount > 0? classes.previewTextUnread : classes.previewText}>
+          <Typography className={classes.previewText}>
             {latestMessageText}
           </Typography>
         </Box>
-        {unreadTextCount > 0 &&
-        <Typography component="div" className={classes.unreadTextCount}>
-          {unreadTextCount}
-        </Typography>}
+        {unreadTextCount > 0 && <Chip className={classes.unreadTextCount} label={unreadTextCount} color="primary" />}
       </Box>
   );
 };

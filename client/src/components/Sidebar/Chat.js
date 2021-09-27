@@ -29,15 +29,15 @@ const Chat = (props) => {
   };
 
   return (
-      <Box onClick={() => handleClick(conversation)} className={classes.root}>
-        <BadgeAvatar
-            photoUrl={otherUser.photoUrl}
-            username={otherUser.username}
-            online={otherUser.online}
-            sidebar={true}
-        />
-        <ChatContent conversation={conversation} unreadTextCount={conversation.lastView?.count}/>
-      </Box>
+    <Box onClick={() => handleClick(conversation)} className={classes.root}>
+      <BadgeAvatar
+        photoUrl={otherUser.photoUrl}
+        username={otherUser.username}
+        online={otherUser.online}
+        sidebar={true}
+      />
+      <ChatContent conversation={conversation} unreadTextCount={conversation.lastView?.count}/>
+    </Box>
   );
 };
 

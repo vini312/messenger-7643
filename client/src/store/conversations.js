@@ -4,7 +4,7 @@ import {
   addSearchedUsersToStore,
   removeOfflineUserFromStore,
   addMessageToStore,
-  addLastViewTime
+  addLastViewData
 } from "./utils/reducerFunctions";
 
 // ACTIONS
@@ -16,7 +16,7 @@ const REMOVE_OFFLINE_USER = "REMOVE_OFFLINE_USER";
 const SET_SEARCHED_USERS = "SET_SEARCHED_USERS";
 const CLEAR_SEARCHED_USERS = "CLEAR_SEARCHED_USERS";
 const ADD_CONVERSATION = "ADD_CONVERSATION";
-const SET_LAST_VIEW_TIME = "SET_LAST_VIEW_TIME";
+const SET_LAST_VIEW_DATA = "SET_LAST_VIEW_DATA";
 
 // ACTION CREATORS
 
@@ -69,13 +69,12 @@ export const addConversation = (recipientId, newMessage) => {
   };
 };
 
-export const setLastViewTime = (conversationId, data) => {
+export const setLastViewData = (conversationId, data) => {
   return {
-    type: SET_LAST_VIEW_TIME,
+    type: SET_LAST_VIEW_DATA,
     payload: { conversationId,
-      lastViewTime: data.lastViewTime || null,
-      otherUserLastMessageId: data.otherUserLastMessageId || null,
-      count: data.count || null
+      otherUserLastMessageId: data?.otherUserLastMessageId || null,
+      count: data?.count || null
     }
   }
 }
@@ -100,12 +99,12 @@ const reducer = (state = [], action) => {
       return state.filter((convo) => convo.id);
     case ADD_CONVERSATION:
       return addNewConvoToStore(
-          state,
-          action.payload.recipientId,
-          action.payload.newMessage
+        state,
+        action.payload.recipientId,
+        action.payload.newMessage
       );
-    case SET_LAST_VIEW_TIME:
-      return addLastViewTime(state, action.payload);
+    case SET_LAST_VIEW_DATA:
+      return addLastViewData(state, action.payload);
     default:
       return state;
   }

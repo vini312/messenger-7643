@@ -2,7 +2,8 @@ import io from "socket.io-client";
 import store from "./store";
 import {
   removeOfflineUser,
-  addOnlineUser, setLastViewTime,
+  addOnlineUser,
+  setLastViewData,
 } from "./store/conversations";
 import { messageReceived } from "./store/utils/thunkCreators";
 
@@ -22,7 +23,7 @@ socket.on("connect", () => {
   socket.on("new-message", (data) => {
     // Condition to update only the last viewed message
     if (data.recipientId.otherUserLastMessageId !== undefined)
-      store.dispatch(setLastViewTime(data.message.conversationId, {otherUserLastMessageId: data.recipientId.otherUserLastMessageId}));
+      store.dispatch(setLastViewData(data.message.conversationId, {otherUserLastMessageId: data.recipientId.otherUserLastMessageId}));
     // Condition to update all values
     else
       store.dispatch(messageReceived(data));

@@ -1,5 +1,5 @@
 const router = require("express").Router();
-const { User, Conversation, Message, LastViewTime } = require("../../db/models");
+const { User, Conversation, Message } = require("../../db/models");
 const { Op } = require("sequelize");
 const onlineUsers = require("../../onlineUsers");
 
@@ -44,13 +44,6 @@ router.get("/", async (req, res, next) => {
           attributes: ["id", "username", "photoUrl"],
           required: false,
         },
-        {
-          model: LastViewTime,
-          where :{
-            userId: userId
-          },
-          required: false,
-        }
       ],
     });
 
@@ -95,77 +88,26 @@ router.get("/", async (req, res, next) => {
         convoJSON.otherUser.online = false;
       }
 
-      const otherUserLastView = await LastViewTime.findOne({
-        where: {
-          [Op.and]: {
-            userId: convoJSON.otherUser.id,
-            conversationId: convoJSON.id
-          }
-        },
-        attributes: ["conversationId", "userId", "updatedAt"]
-      });
-
       // set properties for notification count and latest message preview
       convoJSON.lastView = {
-        time: convoJSON.last_view_time.updatedAt,
         count: 0,
-        otherUserLastMessageId: convoJSON.messages[0].id
+        otherUserLastMessageId: 0
       };
 
-      // Reverse loop, since new messages would be the last elements
-      // tempIndex is used to store the index of the message stored at otherUserLastMessageId ( this avoids having 2 separate loops)
-      let tempIndex = 0;
-      for (let j = convoJSON.messages.length - 1; j >= 0; j--) {
-        const countCondition = convoJSON.messages[j].createdAt > convoJSON.last_view_time.updatedAt;
-        const otherUserLastMessCondition = convoJSON.messages[j].createdAt <= otherUserLastView.updatedAt;
-
-        if (countCondition)
-          convoJSON.lastView.count++;
-
-        // Check if the message is older than last view time and newer than the stored one
-        if (otherUserLastMessCondition && convoJSON.messages[j].createdAt > convoJSON.messages[tempIndex].createdAt) {
-          tempIndex = j;
-          convoJSON.lastView.otherUserLastMessageId = convoJSON.messages[j].id;
+      for (const message of convoJSON.messages) {
+        if (message.senderId !== userId) {
+          if (!message.read)
+            convoJSON.lastView.count++;
         }
-
-        // If both conditions are not met, there is no need to keep iterating
-        if (!countCondition && !otherUserLastMessCondition)
-          break;
+        else if (message.read)
+          convoJSON.lastView.otherUserLastMessageId = message.id;
       }
-      delete convoJSON.last_view_time;
 
       convoJSON.latestMessageText = convoJSON.messages[convoJSON.messages.length - 1].text;
         convoSorted[i] = convoJSON;
     }
 
     res.json(convoSorted);
-  } catch (error) {
-    next(error);
-  }
-});
-
-router.put("/lastViewTime", async (req, res, next) => {
-  try {
-    if (!req.user) {
-      return res.sendStatus(401);
-    }
-    const userId = req.user.id;
-    const {conversationId} = req.body;
-
-    await LastViewTime.update({conversationId}, {
-      where: {
-        conversationId,
-        userId,
-      }
-    });
-    const lastViewTime = await LastViewTime.findAll({
-      where: {
-        conversationId: conversationId,
-        userId: userId,
-      }
-    });
-
-    return res.json({lastViewTime});
   } catch (error) {
     next(error);
   }
