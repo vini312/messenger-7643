@@ -5,8 +5,11 @@ import {
   addConversation,
   setNewMessage,
   setSearchedUsers,
+  setLastViewData,
 } from "../conversations";
 import { gotUser, setFetchingStatus } from "../user";
+import { setActiveChat } from "../activeConversation";
+import store from "../index";
 
 axios.interceptors.request.use(async function (config) {
   const token = await localStorage.getItem("messenger-token");
@@ -83,6 +86,11 @@ const saveMessage = async (body) => {
   return data;
 };
 
+const updateMessage = async (body) => {
+  const { data } = await axios.put("/api/messages", body);
+  return data;
+}
+
 const sendMessage = (data, body) => {
   socket.emit("new-message", {
     message: data.message,
@@ -109,6 +117,28 @@ export const postMessage = (body) => async (dispatch) => {
   }
 };
 
+export const messageReceived = (data) => async (dispatch, getState) => {
+  try {
+    if (data.recipientId === getState().user.id) {
+      const activeConversationUser = getState().activeConversation;
+
+      store.dispatch(setNewMessage(data.message, data.sender));
+
+      // Check if the conversation is already active to edit lastView accordingly
+      if (data.message.senderId === activeConversationUser.id) {
+        await updateMessage({messageId: data.message.id, read: true});
+
+        // Broadcast to other user the new last viewed message id
+        sendMessage(data, {recipientId: {recipientId: data.recipientId, otherUserLastMessageId: data.message.id}});
+      } else
+          // Update lastView with other user information
+        dispatch(setLastViewData(data.message.conversationId, {count: true}));
+    }
+  } catch (error) {
+    console.error(error);
+  }
+};
+
 export const searchUsers = (searchTerm) => async (dispatch) => {
   try {
     const { data } = await axios.get(`/api/users/${searchTerm}`);
@@ -117,3 +147,36 @@ export const searchUsers = (searchTerm) => async (dispatch) => {
     console.error(error);
   }
 };
+
+export const activateChat = (conversation) => async (dispatch) => {
+  try {
+    if (conversation.id) {
+      let lastMessageViewedId = -1;
+
+      for (const message of conversation.messages) {
+        if (message.senderId === conversation.otherUser.id) {
+          if (!message.read) {
+            await updateMessage({messageId: message.id, read: true});
+            message.read = true;
+          }
+          lastMessageViewedId = message.id;
+        }
+      }
+
+    dispatch(setLastViewData(conversation.id));
+
+    // Broadcast to other user the new last viewed message id
+    sendMessage(
+        { message: { conversationId:conversation.id }},
+        { recipientId: {
+            id: conversation.otherUser.id,
+            otherUserLastMessageId: lastMessageViewedId
+          }});
+    }
+
+    dispatch(setActiveChat(conversation.otherUser.username, conversation.otherUser.id));
+
+  } catch (error) {
+    console.error(error);
+  }
+}

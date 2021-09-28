@@ -18,8 +18,8 @@ router.post("/", async (req, res, next) => {
     }
     // if we don't have conversation id, find a conversation to make sure it doesn't already exist
     let conversation = await Conversation.findConversation(
-      senderId,
-      recipientId
+        senderId,
+        recipientId
     );
 
     if (!conversation) {
@@ -32,12 +32,34 @@ router.post("/", async (req, res, next) => {
         sender.online = true;
       }
     }
+
     const message = await Message.create({
       senderId,
       text,
       conversationId: conversation.id,
     });
+
     res.json({ message, sender });
+
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.put("/", async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return res.sendStatus(401);
+    }
+    const {messageId, read} = req.body;
+
+    await Message.update({read}, {
+      where: {
+        id: messageId
+      }
+    });
+
+    return res.json({messageId, read});
   } catch (error) {
     next(error);
   }

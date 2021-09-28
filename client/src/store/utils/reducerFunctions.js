@@ -6,8 +6,13 @@ export const addMessageToStore = (state, payload) => {
       id: message.conversationId,
       otherUser: sender,
       messages: [message],
+      lastView: {
+        time: message.createdAt,
+        count: 0
+      },
+      latestMessageText: message.text
     };
-    newConvo.latestMessageText = message.text;
+
     return [newConvo, ...state];
   }
 
@@ -78,6 +83,11 @@ export const addNewConvoToStore = (state, recipientId, message) => {
         ...convo,
         id: message.conversationId,
         latestMessageText: message.text,
+        lastView: {
+          ...convo.lastView,
+          time: message.createdAt,
+          count: 0
+        },
         messages: [
           ...convo.messages,
           message
@@ -88,3 +98,38 @@ export const addNewConvoToStore = (state, recipientId, message) => {
     }
   });
 };
+
+export const addLastViewData = (state, data) => {
+
+  return state.map((convo) => {
+    if (convo.id === data.conversationId) {
+      let lastView;
+      // Condition when receives count, to update the unread messages count
+      if (data.count !== null) {
+        lastView = {
+          ...convo.lastView,
+          count: convo.lastView.count + 1
+        }
+      }
+      // Condition when receives an otherUserLastMessageId, to update the other user last read message id
+      else if (data.otherUserLastMessageId !== null) {
+        lastView = {
+          ...convo.lastView,
+          otherUserLastMessageId: data.otherUserLastMessageId
+        }
+      }
+      // Condition set unread message count to zero (only conversation id is received as argument)
+      else {
+        lastView = {
+          ...convo.lastView,
+          count: 0
+        }
+      }
+
+      return {...convo, lastView}
+    } else {
+      return convo;
+    }
+  });
+}
+
